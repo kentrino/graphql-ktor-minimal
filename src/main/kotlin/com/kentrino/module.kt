@@ -2,6 +2,7 @@ package com.kentrino
 
 import com.kentrino.db.UfoSightings
 import com.kentrino.db.createHikariDataSource
+import com.kentrino.graphql.GraphQLHandler
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -21,4 +22,6 @@ fun module(): Module = module(createdAtStart = true) {
         }
         connection
     }
+
+    single<GraphQLHandler> { GraphQLHandler() }
 }

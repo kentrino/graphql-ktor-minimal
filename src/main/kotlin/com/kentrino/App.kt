@@ -1,22 +1,20 @@
 package com.kentrino
 
-import com.kentrino.db.UfoSightings
+import com.kentrino.graphql.GraphQLHandler
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.http.ContentType
-import io.ktor.response.respondText
-import io.ktor.routing.get
+import io.ktor.features.ContentNegotiation
+import io.ktor.jackson.jackson
+import io.ktor.response.respond
+import io.ktor.routing.post
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.koin.Logger.SLF4JLogger
 import org.koin.ktor.ext.Koin
 import org.koin.ktor.ext.inject
+import java.util.concurrent.ConcurrentHashMap
 
 
 fun main(args: Array<String>) {
@@ -35,18 +33,29 @@ fun main(args: Array<String>) {
 }
 
 fun Application.injectDependencies() {
+    install(ContentNegotiation) {
+        jackson {}
+    }
+
     install(Koin) {
         SLF4JLogger()
         modules(module())
     }
 }
 
+data class GraphQLRequest(val query: String, val operationName: String?, val variables: Map<String, Any>?)
+
 fun Application.main() {
     routing {
-        val connection by inject<Database>()
-
-        get("/") {
-            call.respondText("Hi!", contentType = ContentType.Text.Plain)
+        val handler by inject<GraphQLHandler>()
+        post<GraphQLRequest>("/graphql") {
+            val query = it.query
+            val operationName = it.operationName ?: ""
+            val variables = it.variables ?: mapOf()
+            val context = ConcurrentHashMap<String, Any>()
+            call.respond(
+                    handler.execute(query, operationName, variables, context).toSpecification()
+            )
         }
     }
 }
